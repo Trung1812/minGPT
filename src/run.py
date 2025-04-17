@@ -72,10 +72,13 @@ elif args.variant == 'rope':
     # TODO: [part g] Make some other model here
     # set mconf.rope parameter
     ### YOUR CODE HERE ###
-    pass
+    mconf.rope = True
+    model = models.GPT(mconf)
     ### END YOUR CODE ###
 else:
     raise ValueError("Unknown model variant")
+
+model = model.to(device)
 
 print('Model on device: ', next(model.parameters()).device)
 
@@ -102,16 +105,15 @@ if args.function == 'pretrain':
     # writer=writer
 
     ### YOUR CODE HERE ###
-    data = dataset.CharCorruptionDataset(args.pretrain_corpus_path, block_size)
     tconf = trainer.TrainerConfig(max_epochs=650,
                                   batch_size=128,
                                   learning_rate=args.pretrain_lr,
                                   lr_decay=True,
                                   warmup_tokens=512*20,
                                   final_tokens=650*len(pretrain_dataset)*block_size,
-                                  num_workers=4,
+                                  num_workers=0,
                                   writer=writer)
-    pretrainer = trainer.Trainer(model, data, None, tconf)
+    pretrainer = trainer.Trainer(model, pretrain_dataset, None, tconf)
     pretrainer.train()
     torch.save(model.state_dict(), args.writing_params_path)
     ### END YOUR CODE ###
