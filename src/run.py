@@ -102,7 +102,18 @@ if args.function == 'pretrain':
     # writer=writer
 
     ### YOUR CODE HERE ###
-    pass
+    data = dataset.CharCorruptionDataset(args.pretrain_corpus_path, block_size)
+    tconf = trainer.TrainerConfig(max_epochs=650,
+                                  batch_size=128,
+                                  learning_rate=args.pretrain_lr,
+                                  lr_decay=True,
+                                  warmup_tokens=512*20,
+                                  final_tokens=650*len(pretrain_dataset)*block_size,
+                                  num_workers=4,
+                                  writer=writer)
+    pretrainer = trainer.Trainer(model, data, None, tconf)
+    pretrainer.train()
+    torch.save(model.state_dict(), args.writing_params_path)
     ### END YOUR CODE ###
 elif args.function == 'finetune':
     assert args.writing_params_path is not None
@@ -143,18 +154,28 @@ elif args.function == 'finetune':
     ### YOUR CODE HERE ###
     if args.reading_params_path is not None:
         checkpoint = torch.load(args.reading_params_path, weights_only=True)
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint)
+        tconf = trainer.TrainerConfig(max_epochs=10,
+                                      batch_size=256,
+                                      learning_rate=args.finetune_lr,
+                                      lr_decay=True,
+                                      warmup_tokens=512*20,
+                                      final_tokens=200*len(pretrain_dataset)*block_size,
+                                      num_workers=4,
+                                      writer=writer)
+    else:
+        tconf = trainer.TrainerConfig(
+                                    max_epochs=75,
+                                    batch_size=256,
+                                    learning_rate=args.finetune_lr,
+                                    lr_decay=True,
+                                    warmup_tokens=512*20,
+                                    final_tokens=200*len(pretrain_dataset)*block_size,
+                                    num_workers=4,
+                                    writer=writer)
     
     data = dataset.NameDataset(pretrain_dataset, open(args.finetune_corpus_path, encoding='utf-8').read())
-    tconf = trainer.TrainerConfig(
-                                max_epochs=75,
-                                batch_size=256,
-                                learning_rate=args.finetune_lr,
-                                lr_decay=True,
-                                warmup_tokens=512*20,
-                                final_tokens=200*len(pretrain_dataset)*block_size,
-                                num_workers=0,
-                                writer=writer)
+
     model_trainer = trainer.Trainer(model, data, None, tconf)
     model_trainer.train()
     torch.save(model.state_dict(), args.writing_params_path)
